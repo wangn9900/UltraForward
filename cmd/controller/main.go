@@ -18,7 +18,7 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
-	// CORS
+	// CORS 设置
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
@@ -30,12 +30,13 @@ func main() {
 		c.Next()
 	})
 
-	// 使用新的 assets 包加载嵌入网页
+	// 获取嵌入式前端
 	publicFS, err := fs.Sub(assets.WebDist, "web-dist")
 	if err != nil {
 		log.Fatal("Failed to load embedded frontend:", err)
 	}
 
+	// API 路由
 	v1 := r.Group("/api/v1")
 	{
 		v1.POST("/auth/register", api.RegisterHandler)
@@ -46,13 +47,22 @@ func main() {
 		v1.DELETE("/admin/plans/:id", api.DeletePlan)
 	}
 
+	// 统一处理前端资源 (SPA 路由适配)
 	r.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
-		if strings.Contains(path, ".") {
+
+		// 如果是请求具体资源文件 (assets, images 等)
+		if strings.Contains(path, ".") || strings.HasPrefix(path, "/assets/") {
 			http.FileServer(http.FS(publicFS)).ServeHTTP(c.Writer, c.Request)
 			return
 		}
-		indexData, _ := fs.ReadFile(publicFS, "index.html")
+
+		// 否则，返回 index.html 以支持 Vue Router
+		indexData, err := fs.ReadFile(publicFS, "index.html")
+		if err != nil {
+			c.String(404, "Frontend fully missing. Please check build.")
+			return
+		}
 		c.Data(200, "text/html; charset=utf-8", indexData)
 	})
 

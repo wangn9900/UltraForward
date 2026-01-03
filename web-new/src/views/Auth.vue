@@ -1,50 +1,50 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, defineEmits } from 'vue'
 
-const isLogin = ref(true)
 const emit = defineEmits(['auth-success'])
-
-const form = ref({
-  username: '',
-  password: '',
-  confirmPassword: ''
-})
-
+const isLogin = ref(true)
+const username = ref('')
+const password = ref('')
+const confirmPassword = ref('')
 const loading = ref(false)
-const error = ref('')
+const errorMsg = ref('')
 
-const handleSubmit = async () => {
-  error.value = ''
-  if (!isLogin.value && form.value.password !== form.value.confirmPassword) {
-    error.value = '两次输入的密码不一致'
+const handleAuth = async () => {
+  if (!isLogin.value && password.value !== confirmPassword.value) {
+    errorMsg.value = '两次输入的密码不一致'
     return
   }
 
   loading.value = true
+  errorMsg.value = ''
+  
+  const endpoint = isLogin.value ? '/api/v1/auth/login' : '/api/v1/auth/register'
+  
   try {
-    const endpoint = isLogin.value ? '/api/v1/auth/login' : '/api/v1/auth/register'
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        username: form.value.username,
-        password: form.value.password
+        username: username.value,
+        password: password.value
       })
     })
     
     const data = await res.json()
-    if (!res.ok) throw new Error(data.error || '操作失败')
     
-    if (isLogin.value) {
-      localStorage.setItem('uf_token', data.token)
-      emit('auth-success', data.user)
+    if (res.ok) {
+      if (isLogin.value) {
+        localStorage.setItem('uf_token', data.token)
+        emit('auth-success', data.user)
+      } else {
+        isLogin.value = true
+        errorMsg.value = '注册成功，请登录'
+      }
     } else {
-      // 注册后自动切换到登录
-      isLogin.value = true
-      alert('注册成功，请登录')
+      errorMsg.value = data.error || '认证失败'
     }
   } catch (err) {
-    error.value = err.message
+    errorMsg.value = '无法连接到服务器'
   } finally {
     loading.value = false
   }
@@ -52,70 +52,222 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[100] flex items-center justify-center bg-[#050505] overflow-hidden">
+  <div class="auth-wrapper">
     <!-- 动态背景 -->
-    <div class="absolute inset-0">
-       <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 blur-[120px] rounded-full animate-pulse"></div>
-       <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/10 blur-[120px] rounded-full animate-pulse" style="animation-delay: 1s"></div>
+    <div class="bg-blobs">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="blob blob-3"></div>
     </div>
 
-    <div class="glass-card w-full max-w-[420px] p-10 relative z-10 animate-fade-in">
-      <div class="text-center mb-10">
-        <div class="w-16 h-16 bg-gradient-to-br from-primary to-accent rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/20 mx-auto mb-6">
-           <span class="text-white font-black text-3xl italic">U</span>
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="logo-aura">
+          <span>U</span>
         </div>
-        <h2 class="text-3xl font-black italic tracking-tighter text-white uppercase">{{ isLogin ? '验证访问' : '加入极前' }}</h2>
-        <p class="text-gray-500 text-xs font-bold tracking-widest mt-2">ULTRAFORWARD SECURITY GATE</p>
+        <h1>ULTRA<span>FORWARD</span></h1>
+        <p>{{ isLogin ? '旗舰级转发控制台' : '申请加入极前计划' }}</p>
       </div>
 
-      <form @submit.prevent="handleSubmit" class="space-y-6">
-        <div v-if="error" class="bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold p-3 rounded-xl text-center uppercase tracking-widest">
-           {{ error }}
+      <div class="auth-body">
+        <div class="input-group">
+          <label>账号标识 / USERNAME</label>
+          <input v-model="username" type="text" placeholder="请输入您的账号" @keyup.enter="handleAuth" />
         </div>
 
-        <div class="space-y-4">
-          <div class="space-y-1">
-             <label class="text-[10px] font-black text-gray-500 uppercase tracking-widest px-1">账号标识</label>
-             <input v-model="form.username" type="text" placeholder="Username" required
-                    class="w-full bg-white/5 border border-white/5 rounded-xl px-5 py-3 text-white focus:outline-none focus:border-primary transition-all font-medium" />
-          </div>
-          <div class="space-y-1">
-             <label class="text-[10px] font-black text-gray-500 uppercase tracking-widest px-1">安全密钥</label>
-             <input v-model="form.password" type="password" placeholder="Password" required
-                    class="w-full bg-white/5 border border-white/5 rounded-xl px-5 py-3 text-white focus:outline-none focus:border-primary transition-all font-medium" />
-          </div>
-          <div v-if="!isLogin" class="space-y-1 animate-fade-in">
-             <label class="text-[10px] font-black text-gray-500 uppercase tracking-widest px-1">重复校验</label>
-             <input v-model="form.confirmPassword" type="password" placeholder="Confirm Password" required
-                    class="w-full bg-white/5 border border-white/5 rounded-xl px-5 py-3 text-white focus:outline-none focus:border-primary transition-all font-medium" />
-          </div>
+        <div class="input-group">
+          <label>安全密钥 / PASSWORD</label>
+          <input v-model="password" type="password" placeholder="请输入密码" @keyup.enter="handleAuth" />
         </div>
 
-        <button type="submit" :disabled="loading" class="btn-aura w-full py-4 text-sm tracking-[4px] uppercase italic">
-          {{ loading ? 'PROCESSING...' : (isLogin ? 'LOG IN' : 'REGISTER') }}
+        <div v-if="!isLogin" class="input-group animate-slide-down">
+          <label>确认密钥 / CONFIRM</label>
+          <input v-model="confirmPassword" type="password" placeholder="请再次输入密码" @keyup.enter="handleAuth" />
+        </div>
+
+        <div v-if="errorMsg" class="error-banner">
+          {{ errorMsg }}
+        </div>
+
+        <button class="auth-btn" :class="{ 'loading': loading }" @click="handleAuth">
+          <span>{{ isLogin ? '立即验证身份' : '创建新账号' }}</span>
+          <div v-if="loading" class="spinner"></div>
         </button>
+      </div>
 
-        <div class="text-center pt-4">
-          <button type="button" @click="isLogin = !isLogin" class="text-[10px] font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-[2px]">
-            {{ isLogin ? '还没有账号？现在申请加入' : '已有授权？立即返回登录' }}
-          </button>
-        </div>
-      </form>
-
-      <!-- 装饰 -->
-      <div class="mt-12 text-center text-[8px] text-gray-700 font-black uppercase tracking-[5px]">
-         Secured by Stealth-Pass Protocol
+      <div class="auth-footer">
+        <span @click="isLogin = !isLogin">
+          {{ isLogin ? '还没有账号? 现在申请加入' : '已有授权账号? 立即返回登录' }}
+        </span>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.animate-fade-in {
-  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+.auth-wrapper {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #050505;
+  font-family: 'Outfit', sans-serif;
+  overflow: hidden;
 }
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+
+/* 动态背景球 */
+.bg-blobs {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  filter: blur(80px);
 }
+.blob {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  opacity: 0.2;
+  animation: move 20s infinite alternate;
+}
+.blob-1 { background: var(--primary); top: -100px; left: -100px; }
+.blob-2 { background: var(--accent); bottom: -100px; right: -100px; animation-delay: -5s; }
+.blob-3 { background: #6366f1; top: 30%; left: 40%; animation-duration: 30s; }
+
+@keyframes move {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(100px, 100px) scale(1.2); }
+}
+
+.auth-card {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 420px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 32px;
+  padding: 48px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.logo-aura {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 32px;
+  font-weight: 900;
+  color: white;
+  box-shadow: 0 10px 20px rgba(var(--primary-rgb), 0.3);
+}
+
+.auth-header h1 {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -1px;
+  color: white;
+}
+.auth-header h1 span { color: var(--primary); }
+.auth-header p {
+  font-size: 13px;
+  color: #666;
+  margin-top: 8px;
+  font-weight: 500;
+}
+
+.input-group {
+  margin-bottom: 24px;
+}
+.input-group label {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  color: #555;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+.input-group input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 14px 18px;
+  color: white;
+  font-size: 15px;
+  transition: all 0.3s;
+}
+.input-group input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.1);
+}
+
+.error-banner {
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 3px solid #ef4444;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #ef4444;
+  margin-bottom: 24px;
+}
+
+.auth-btn {
+  width: 100%;
+  background: white;
+  color: black;
+  border: none;
+  border-radius: 14px;
+  padding: 16px;
+  font-weight: 900;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.auth-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(255, 255, 255, 0.1);
+}
+.auth-btn.loading { opacity: 0.7; pointer-events: none; }
+
+.auth-footer {
+  margin-top: 32px;
+  text-align: center;
+}
+.auth-footer span {
+  font-size: 13px;
+  color: #666;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.3s;
+}
+.auth-footer span:hover { color: white; }
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-top-color: black;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
