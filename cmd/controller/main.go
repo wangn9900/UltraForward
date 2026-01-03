@@ -45,6 +45,9 @@ func main() {
 	// API 路由
 	v1 := r.Group("/api/v1")
 	{
+		v1.POST("/auth/register", api.RegisterHandler)
+		v1.POST("/auth/login", api.LoginHandler)
+
 		v1.GET("/stats", api.GetDashboardStats)
 		v1.GET("/rules", api.GetUserRules)
 		v1.GET("/lines", api.GetLines)
