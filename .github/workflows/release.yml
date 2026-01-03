@@ -1,0 +1,98 @@
+name: Build and Release UltraForward
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Frontend
+        run: |
+          cd web-new
+          npm install
+          npm run build
+
+      - name: Upload Frontend Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: web-dist/
+
+  build-backend:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, windows]
+        goarch: [amd64, arm64]
+        exclude:
+          - goos: windows
+            goarch: arm64
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Download Frontend Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: web-dist/
+
+      - name: Build UltraForward
+        run: |
+          go mod tidy
+          EXT=""
+          if [ "${{ matrix.goos }}" == "windows" ]; then EXT=".exe"; fi
+          
+          # Build Controller
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
+          go build -ldflags="-s -w" -o ultra-controller-${{ matrix.goos }}-${{ matrix.goarch }}$EXT cmd/controller/main.go
+          
+          # Build Agent
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 \
+          go build -ldflags="-s -w" -o ultra-agent-${{ matrix.goos }}-${{ matrix.goarch }}$EXT cmd/agent/main.go
+
+      - name: Upload Binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: ultra-binaries-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ultra-*
+
+  release:
+    needs: build-backend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ultra-binaries-linux-amd64/ultra-controller-linux-amd64
+            ultra-binaries-linux-amd64/ultra-agent-linux-amd64
+            ultra-binaries-linux-arm64/ultra-controller-linux-arm64
+            ultra-binaries-linux-arm64/ultra-agent-linux-arm64
+            ultra-binaries-windows-amd64/ultra-controller-windows-amd64.exe
+            ultra-binaries-windows-amd64/ultra-agent-windows-amd64.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
