@@ -13,16 +13,19 @@ import (
 )
 
 func main() {
+	log.Println("[UltraForward] 正在初始化旗舰控制中心...")
+
+	// 1. 初始化数据库
 	database.InitDB()
+	log.Println("[UltraForward] 数据库连接成功！")
 
 	gin.SetMode(gin.ReleaseMode)
-	r := gin.Default()
+	r := gin.New() // 使用 New 减少默认中间件干扰
+	r.Use(gin.Recovery())
 
-	// CORS 设置
+	// 2. 极其简化的跨域处理
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Requested-With, Content-Type, Accept, Authorization")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
 			return
@@ -30,13 +33,15 @@ func main() {
 		c.Next()
 	})
 
-	// 获取嵌入式前端
-	publicFS, err := fs.Sub(assets.WebDist, "web-dist")
+	// 3. 准备前端文件系统
+	// 直接从嵌入的 WebDist 中剥离 web-dist 根目录
+	feFS, err := fs.Sub(assets.WebDist, "web-dist")
 	if err != nil {
-		log.Fatal("Failed to load embedded frontend:", err)
+		log.Fatalf("[FATAL] 前端资源剥离失败: %v", err)
 	}
+	staticServer := http.FileServer(http.FS(feFS))
 
-	// API 路由
+	// 4. API 路由
 	v1 := r.Group("/api/v1")
 	{
 		v1.POST("/auth/register", api.RegisterHandler)
@@ -47,27 +52,35 @@ func main() {
 		v1.DELETE("/admin/plans/:id", api.DeletePlan)
 	}
 
-	// 统一处理前端资源 (SPA 路由适配)
+	// 5. 终极静态资源 & SPA 兜底逻辑
 	r.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 
-		// 如果是请求具体资源文件 (assets, images 等)
-		if strings.Contains(path, ".") || strings.HasPrefix(path, "/assets/") {
-			http.FileServer(http.FS(publicFS)).ServeHTTP(c.Writer, c.Request)
+		// 检查嵌入的文件系统中是否存在该文件
+		_, err := fs.Stat(feFS, strings.TrimPrefix(path, "/"))
+
+		if err == nil {
+			// 文件存在，直接按静态文件返回
+			staticServer.ServeHTTP(c.Writer, c.Request)
 			return
 		}
 
-		// 否则，返回 index.html 以支持 Vue Router
-		indexData, err := fs.ReadFile(publicFS, "index.html")
-		if err != nil {
-			c.String(404, "Frontend fully missing. Please check build.")
+		// 如果文件不存在且不是 API 请求，则返回 index.html (SPA 路由)
+		if !strings.HasPrefix(path, "/api/") {
+			indexData, err := fs.ReadFile(feFS, "index.html")
+			if err != nil {
+				c.String(404, "UI Bundle Incomplete")
+				return
+			}
+			c.Data(200, "text/html; charset=utf-8", indexData)
 			return
 		}
-		c.Data(200, "text/html; charset=utf-8", indexData)
+
+		c.JSON(404, gin.H{"error": "Path not found"})
 	})
 
 	port := ":8080"
-	log.Printf("[UltraForward] 旗舰控制中心已上线: http://0.0.0.0%s", port)
+	log.Printf("[UltraForward] 服务已就绪，请访问: http://0.0.0.0%s", port)
 	if err := r.Run(port); err != nil {
 		log.Fatal(err)
 	}
