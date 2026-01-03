@@ -25,4 +25,16 @@ func InitDB() {
 		&models.Rule{},
 		&models.Order{},
 	)
+
+	seedData()
+}
+
+func seedData() {
+	var count int64
+	DB.Model(&models.Plan{}).Count(&count)
+	if count == 0 {
+		DB.Create(&models.Plan{
+			Name: "旗舰企业包", Price: 49.9, Traffic: 500, Rules: 20, DurationDays: 30, Description: "全速、全线路、SLA 保证",
+		})
+	}
 }
