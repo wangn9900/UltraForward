@@ -3,8 +3,8 @@ package database
 import (
 	"log"
 
+	"github.com/glebarez/sqlite"
 	"github.com/wangn9900/UltraForward/internal/models"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -12,6 +12,8 @@ var DB *gorm.DB
 
 func InitDB() {
 	var err error
+	// 使用纯 Go 版 SQLite 驱动 (github.com/glebarez/sqlite)
+	// 解决 CGO_ENABLED=0 下的编译运行问题
 	DB, err = gorm.Open(sqlite.Open("ultra.db"), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Failed to connect database:", err)
