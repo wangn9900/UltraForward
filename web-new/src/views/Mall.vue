@@ -6,8 +6,12 @@ const plans = ref([])
 const newPlan = ref({ name: '', price: 0, traffic: 0, rules: 5, duration_days: 30, description: '' })
 
 const fetchPlans = async () => {
-  const res = await fetch('/api/v1/plans')
-  plans.value = await res.json()
+  try {
+    const res = await fetch('/api/v1/plans')
+    plans.value = await res.json()
+  } catch (err) {
+    console.error('Fetch plans failed', err)
+  }
 }
 
 const addPlan = async () => {
@@ -39,6 +43,7 @@ onMounted(fetchPlans)
           <button @click="addPlan" class="btn-aura py-2 text-xs">发布新套餐</button>
        </div>
     </div>
+    
     <div class="glass-card bg-gradient-to-br from-primary/10 via-transparent to-accent/5 p-8 flex flex-col md:flex-row justify-between items-center relative overflow-hidden">
        <div class="relative z-10">
           <h3 class="text-3xl font-black italic tracking-tighter mb-2 italic uppercase">资产钱包充值</h3>
@@ -57,7 +62,7 @@ onMounted(fetchPlans)
 
     <!-- 套餐矩阵 -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-       <div v-for="plan in plans" :key="plan.id" 
+       <div v-for="plan in plans" :key="plan.ID" 
             class="glass-card p-10 flex flex-col relative group"
             :class="{ 'ring-2 ring-primary/40': plan.price > 40 }">
           
@@ -101,29 +106,3 @@ onMounted(fetchPlans)
     </div>
   </div>
 </template>
-
-<script setup>
-const plans = [
-   { 
-      tag: '入门版', 
-      name: 'Starter', 
-      price: 19.9, 
-      featured: false,
-      features: ['100GB 极速流量', '5 条活跃链路', '隐身协议全支持', '基础 BGP 线路']
-   },
-   { 
-      tag: '进阶版', 
-      name: 'Premium', 
-      price: 49.9, 
-      featured: true,
-      features: ['500GB 极速流量', '20 条活跃链路', '独立 IP 解析', '中港/中日专线解锁', '24/7 优先支持']
-   },
-   { 
-      tag: '商业版', 
-      name: 'Ultimate', 
-      price: 99.9, 
-      featured: false,
-      features: ['2TB 极速流量', '无限活跃链路', '独享出口节点', '全球全线路解锁', '专属运维服务']
-   }
-]
-</script>
