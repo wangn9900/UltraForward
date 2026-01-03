@@ -1,6 +1,5 @@
 #!/bin/bash
 # UltraForward (极前) - 旗舰级隐身转发系统 - 全自动安装程序
-# 官方仓库: https://github.com/wangn9900/UltraForward
 
 set -e
 
@@ -28,7 +27,7 @@ function install_controller() {
     mkdir -p /usr/local/bin
     mkdir -p /etc/ultraforward
 
-    echo -e "${COLOR_YELLOW}3. 正在下载旗舰版内核套件 (v1.1.0)...${COLOR_NC}"
+    echo -e "${COLOR_YELLOW}3. 正在下载旗舰版内核套件 (latest)...${COLOR_NC}"
     curl -L -o /usr/local/bin/ultra-controller "https://github.com/wangn9900/UltraForward/releases/latest/download/ultra-controller-linux-$ARCH"
     chmod +x /usr/local/bin/ultra-controller
 
@@ -62,7 +61,7 @@ EOF
     echo -e "${COLOR_GREEN}🎊  UltraForward (极前) 部署成功！${COLOR_NC}"
     echo -e "-------------------------------------------------"
     echo -e "🌍  控制面板地址: ${COLOR_YELLOW}http://${IP}:8080${COLOR_NC}"
-    echo -e "🔑  初始操作: 请先在页面上注册 Admin 账号"
+    echo -e "🔑  默认管理员: admin / admin123"
     echo -e "-------------------------------------------------"
     echo -e "🛠️  管理命令:"
     echo -e "   - 启动: systemctl start ultra-controller"
@@ -71,5 +70,4 @@ EOF
     echo -e "${COLOR_GREEN}#################################################${COLOR_NC}"
 }
 
-# 自动开始安装 (不再等待输入)
 install_controller
