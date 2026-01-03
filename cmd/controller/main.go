@@ -48,10 +48,11 @@ func main() {
 		v1.POST("/auth/register", api.RegisterHandler)
 		v1.POST("/auth/login", api.LoginHandler)
 
-		v1.GET("/stats", api.GetDashboardStats)
-		v1.GET("/rules", api.GetUserRules)
-		v1.GET("/lines", api.GetLines)
 		v1.GET("/plans", api.GetPlans)
+
+		// Admin Routes
+		v1.POST("/admin/plans", api.CreatePlan)
+		v1.DELETE("/admin/plans/:id", api.DeletePlan)
 	}
 
 	log.Println("[UltraForward Controller] Starting on :8080...")
