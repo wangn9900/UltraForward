@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 必须加这一行，保安才让发安装包
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,8 +24,6 @@ jobs:
           cd web-new
           npm install
           npm run build
-          # 确保目录存在且有内容
-          ls -R ../internal/assets/web-dist/
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -33,12 +33,8 @@ jobs:
       - name: Build UltraForward Binaries
         run: |
           go mod tidy
-          
-          # Linux amd64
           GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ultra-controller-linux-amd64 cmd/controller/main.go
           GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ultra-agent-linux-amd64 cmd/agent/main.go
-          
-          # Linux arm64
           GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ultra-controller-linux-arm64 cmd/controller/main.go
           GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ultra-agent-linux-arm64 cmd/agent/main.go
 
